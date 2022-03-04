@@ -1,44 +1,27 @@
 package blockchain;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
+import java.security.NoSuchProviderException;
+import java.security.SignatureException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Block {
-    private String hash;
     private final String previousHash;
-    private final String data;
     private final long timestamp;
+    private final List<Transaction> transactions = new ArrayList<>();
+    private String hash;
     private int nonce;
 
-    public Block(String data, String previousHash) throws NoSuchAlgorithmException {
-        this.data = data;
+    public Block(String previousHash) throws NoSuchAlgorithmException {
         this.previousHash = previousHash;
         this.timestamp = System.currentTimeMillis();
         this.hash = computeHash();
     }
 
     public String computeHash() throws NoSuchAlgorithmException {
-        String input = previousHash + timestamp + data;
-        MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
-        byte[] bytes = messageDigest.digest(input.getBytes(StandardCharsets.UTF_8));
-
-        StringBuilder stringBuilder = new StringBuilder();
-
-        for (int i = 0; i < bytes.length; i++) {
-            String hex = byteToHex(bytes[i]);
-            stringBuilder.append(hex);
-        }
-
-        return stringBuilder.toString();
-    }
-
-    private String byteToHex(byte value) {
-        char[] digits = new char[2];
-        digits[0] = Character.forDigit((value >> 4) & 0xF, 16);
-        digits[1] = Character.forDigit(value & 0xF, 16);
-        return new String(digits);
+        return Util.getSha256(previousHash + timestamp + nonce + transactions);
     }
 
     public String getHash() {
@@ -56,5 +39,23 @@ public class Block {
             nonce++;
             hash = computeHash();
         }
+
+        System.out.println("Block mined");
+    }
+
+    public void addTransaction(Transaction transaction) throws SignatureException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException {
+        if (transaction == null) return;
+
+        if (!transaction.process()) {
+            System.out.println("Transaction rejected");
+            return;
+        }
+
+        transactions.add(transaction);
+        System.out.println("Transaction accepted");
+    }
+
+    public List<Transaction> getTransactions() {
+        return transactions;
     }
 }
